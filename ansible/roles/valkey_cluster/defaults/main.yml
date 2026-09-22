@@ -19,6 +19,7 @@ valkey_sentinel_binary: "{{ valkey_server_binary }}"
 valkey_service_name: valkey
 valkey_sentinel_service_name: valkey-sentinel
 valkey_haproxy_service_name: haproxy
+valkey_haproxy_config_group: haproxy
 
 valkey_bind_address: 0.0.0.0
 valkey_advertise_address: "{{ ansible_host | default(inventory_hostname) }}"
@@ -50,18 +51,16 @@ valkey_runtime_dir: /run/valkey
 valkey_runtime_dir_name: valkey
 valkey_nofile_limit: 65536
 
-valkey_sentinel_enabled: true
+valkey_sentinel_enabled: false
 valkey_sentinel_port: 26379
 valkey_sentinel_bind_address: "{{ valkey_bind_address }}"
 valkey_sentinel_quorum: "{{ ((valkey_cluster_nodes | length) // 2) + 1 if (valkey_cluster_nodes | length) > 0 else 1 }}"
-valkey_sentinel_overwrite_config: false
 valkey_sentinel_resolve_hostnames: false
 valkey_sentinel_announce_hostnames: false
 valkey_sentinel_down_after_milliseconds: 10000
 valkey_sentinel_failover_timeout: 180000
 valkey_sentinel_parallel_syncs: "{{ ([5, ((valkey_cluster_nodes | length) - 1)] | min) if (valkey_cluster_nodes | length) > 1 else 1 }}"
 valkey_sentinel_extra_config: ''
-valkey_sentinel_base_config_file: "{{ valkey_config_dir }}/sentinel-base.conf"
 valkey_sentinel_config_file: "{{ valkey_config_dir }}/sentinel.conf"
 valkey_sentinel_state_dir: /var/lib/valkey-sentinel
 

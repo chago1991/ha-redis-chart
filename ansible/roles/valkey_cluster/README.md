@@ -79,10 +79,11 @@ all:
 | `valkey_requirepass` | Password applied to Valkey and replica auth | `""` |
 | `valkey_auth_mode` | Supported authentication mode for this role | `none` or `shared_password` |
 | `valkey_min_replicas_to_write` | Write quorum threshold applied to every node after promotion | `0` |
+| `valkey_sentinel_enabled` | Enables the Sentinel daemon on Valkey hosts | `false` |
 | `valkey_sentinel_binary` | Sentinel executable when it differs from the server binary | `valkey_server_binary` |
-| `valkey_sentinel_overwrite_config` | Re-template `sentinel.conf` even after Sentinel has persisted runtime state | `false` |
 | `valkey_haproxy_enabled` | Installs and configures HAProxy on the current host | `false` |
 | `valkey_haproxy_allow_insecure_auth_transport` | Explicitly allow HAProxy backend checks to use password auth without TLS | `false` |
+| `valkey_haproxy_config_group` | Group allowed to read the HAProxy config when it contains backend auth | `haproxy` |
 | `valkey_haproxy_readonly_enabled` | Exposes a second HAProxy port for replicas | `false` |
 | `valkey_haproxy_backend_nodes` | Backend nodes used by HAProxy | `valkey_cluster_nodes` |
 | `valkey_disable_commands` | Commands disabled with `rename-command`; keep `INFO` enabled when using HAProxy health checks | `[FLUSHDB, FLUSHALL]` |
@@ -92,7 +93,7 @@ all:
 
 - The role assumes Valkey is available from the target host package repositories.
 - Override `valkey_server_packages`, `valkey_server_binary`, or the user/group variables if your distribution uses different names.
-- Sentinel rewrites its own runtime file during failover, so the role keeps managed settings in `sentinel-base.conf` and only bootstraps `sentinel.conf` when needed.
+- Sentinel rewrites its own runtime file during failover, so the role updates managed directives in `sentinel.conf` without replacing the whole file.
 - Sentinel is only supported on hosts that also run the Valkey server role.
 - The supported auth model is a simple shared password (`requirepass`/`masterauth`). ACL-style username-based auth is out of scope for this role.
-- If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer. Passwords used with HAProxy checks must not contain double quotes or newlines.
+- If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer. The password is stored in `/etc/haproxy/haproxy.cfg`, which the role writes as `0640` for `root:{{ valkey_haproxy_config_group }}`. Passwords used with HAProxy checks must not contain double quotes or newlines.

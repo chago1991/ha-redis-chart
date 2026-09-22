@@ -91,33 +91,73 @@
   register: valkey_server_config_result
   when: valkey_server_enabled_resolved
 
-- name: Check existing Sentinel configuration
-  ansible.builtin.stat:
+- name: Ensure Sentinel configuration file exists
+  ansible.builtin.file:
     path: "{{ valkey_sentinel_config_file }}"
-  register: valkey_sentinel_config_stat
-  when: valkey_sentinel_enabled_resolved
-
-- name: Deploy Sentinel base configuration
-  ansible.builtin.template:
-    src: sentinel-base.conf.j2
-    dest: "{{ valkey_sentinel_base_config_file }}"
-    owner: root
-    group: root
-    mode: '0644'
-  register: valkey_sentinel_base_config_result
-  when: valkey_sentinel_enabled_resolved
-
-- name: Deploy Sentinel bootstrap configuration
-  ansible.builtin.template:
-    src: sentinel.conf.j2
-    dest: "{{ valkey_sentinel_config_file }}"
+    state: touch
     owner: "{{ valkey_user }}"
     group: "{{ valkey_group }}"
     mode: '0640'
+  when: valkey_sentinel_enabled_resolved
+
+- name: Manage Sentinel configuration directives
+  ansible.builtin.lineinfile:
+    path: "{{ valkey_sentinel_config_file }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: "{{ item.state | default('present') }}"
+    create: true
   register: valkey_sentinel_config_result
-  when:
-    - valkey_sentinel_enabled_resolved
-    - valkey_sentinel_overwrite_config | bool or not valkey_sentinel_config_stat.stat.exists
+  loop:
+    - regexp: '^dir '
+      line: 'dir "{{ valkey_sentinel_state_dir }}"'
+    - regexp: '^port '
+      line: 'port {{ valkey_sentinel_port }}'
+    - regexp: '^bind '
+      line: 'bind {{ valkey_sentinel_bind_address }}'
+    - regexp: '^daemonize '
+      line: 'daemonize no'
+    - regexp: '^supervised '
+      line: 'supervised {{ valkey_supervision_mode }}'
+    - regexp: '^logfile '
+      line: 'logfile ""'
+    - regexp: '^pidfile '
+      line: 'pidfile "{{ valkey_runtime_dir }}/{{ valkey_sentinel_service_name }}.pid"'
+    - regexp: '^sentinel monitor '
+      line: 'sentinel monitor {{ valkey_master_name }} {{ valkey_primary_address_resolved }} {{ valkey_port }} {{ valkey_sentinel_quorum }}'
+    - regexp: '^sentinel down-after-milliseconds '
+      line: 'sentinel down-after-milliseconds {{ valkey_master_name }} {{ valkey_sentinel_down_after_milliseconds }}'
+    - regexp: '^sentinel failover-timeout '
+      line: 'sentinel failover-timeout {{ valkey_master_name }} {{ valkey_sentinel_failover_timeout }}'
+    - regexp: '^sentinel parallel-syncs '
+      line: 'sentinel parallel-syncs {{ valkey_master_name }} {{ valkey_sentinel_parallel_syncs }}'
+    - regexp: '^sentinel announce-ip '
+      line: 'sentinel announce-ip {{ valkey_current_address_resolved }}'
+    - regexp: '^sentinel announce-port '
+      line: 'sentinel announce-port {{ valkey_sentinel_port }}'
+    - regexp: '^sentinel auth-pass '
+      line: 'sentinel auth-pass {{ valkey_master_name }} {{ valkey_requirepass }}'
+      state: "{{ 'present' if valkey_requirepass | length > 0 else 'absent' }}"
+    - regexp: '^sentinel resolve-hostnames '
+      line: 'sentinel resolve-hostnames yes'
+      state: "{{ 'present' if valkey_sentinel_resolve_hostnames else 'absent' }}"
+    - regexp: '^sentinel announce-hostnames '
+      line: 'sentinel announce-hostnames yes'
+      state: "{{ 'present' if valkey_sentinel_announce_hostnames else 'absent' }}"
+  when: valkey_sentinel_enabled_resolved
+
+- name: Manage Sentinel extra configuration block
+  ansible.builtin.blockinfile:
+    path: "{{ valkey_sentinel_config_file }}"
+    marker: "# {mark} ANSIBLE MANAGED SENTINEL EXTRA CONFIG"
+    block: "{{ valkey_sentinel_extra_config | trim }}"
+    state: "{{ 'present' if valkey_sentinel_extra_config | trim else 'absent' }}"
+    create: true
+    owner: "{{ valkey_user }}"
+    group: "{{ valkey_group }}"
+    mode: '0640'
+  register: valkey_sentinel_extra_config_result
+  when: valkey_sentinel_enabled_resolved
 
 - name: Deploy Valkey systemd unit
   ansible.builtin.template:
@@ -144,7 +184,7 @@
     src: haproxy.cfg.j2
     dest: /etc/haproxy/haproxy.cfg
     owner: root
-    group: root
+    group: "{{ valkey_haproxy_config_group }}"
     mode: '0640'
   register: valkey_haproxy_config_result
   when: valkey_haproxy_enabled_resolved
@@ -169,7 +209,7 @@
     name: "{{ valkey_sentinel_service_name }}"
     daemon_reload: true
     enabled: true
-    state: "{{ 'restarted' if (valkey_sentinel_base_config_result.changed | default(false) or valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
+    state: "{{ 'restarted' if (valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_extra_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_sentinel_enabled_resolved
 
 - name: Enable and start HAProxy
