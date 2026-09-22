@@ -92,7 +92,7 @@ all:
 
 - The role assumes Valkey is available from the target host package repositories.
 - Override `valkey_server_packages`, `valkey_server_binary`, or the user/group variables if your distribution uses different names.
-- Sentinel rewrites its own config during failover, so the sentinel config file is owned by the Valkey service account and is preserved on later role runs unless `valkey_sentinel_overwrite_config` is set to `true`.
+- Sentinel rewrites its own runtime file during failover, so the role keeps managed settings in `sentinel-base.conf` and only bootstraps `sentinel.conf` when needed.
 - Sentinel is only supported on hosts that also run the Valkey server role.
 - The supported auth model is a simple shared password (`requirepass`/`masterauth`). ACL-style username-based auth is out of scope for this role.
 - If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer. Passwords used with HAProxy checks must not contain double quotes or newlines.

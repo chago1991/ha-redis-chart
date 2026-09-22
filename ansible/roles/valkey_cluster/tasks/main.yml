@@ -97,7 +97,17 @@
   register: valkey_sentinel_config_stat
   when: valkey_sentinel_enabled_resolved
 
-- name: Deploy Sentinel configuration
+- name: Deploy Sentinel base configuration
+  ansible.builtin.template:
+    src: sentinel-base.conf.j2
+    dest: "{{ valkey_sentinel_base_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  register: valkey_sentinel_base_config_result
+  when: valkey_sentinel_enabled_resolved
+
+- name: Deploy Sentinel bootstrap configuration
   ansible.builtin.template:
     src: sentinel.conf.j2
     dest: "{{ valkey_sentinel_config_file }}"
@@ -149,7 +159,7 @@
 
 - name: Wait for Valkey to accept connections
   ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if valkey_bind_address in ['0.0.0.0', '::'] else valkey_bind_address }}"
+    host: "{{ '127.0.0.1' if valkey_bind_address == '0.0.0.0' else ('::1' if valkey_bind_address == '::' else valkey_bind_address) }}"
     port: "{{ valkey_port }}"
     timeout: 30
   when: valkey_server_enabled_resolved and valkey_sentinel_enabled_resolved
@@ -159,7 +169,7 @@
     name: "{{ valkey_sentinel_service_name }}"
     daemon_reload: true
     enabled: true
-    state: "{{ 'restarted' if (valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
+    state: "{{ 'restarted' if (valkey_sentinel_base_config_result.changed | default(false) or valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_sentinel_enabled_resolved
 
 - name: Enable and start HAProxy
