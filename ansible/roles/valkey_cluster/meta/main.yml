@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: valkey_cluster
+  author: dandydeveloper
+  description: Deploy a Valkey + Sentinel cluster with optional HAProxy for on-prem hosts.
+  license: Apache-2.0
+  min_ansible_version: '2.15'
+  platforms:
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - valkey
+    - redis
+    - sentinel
+    - haproxy
+    - clustering
+dependencies: []

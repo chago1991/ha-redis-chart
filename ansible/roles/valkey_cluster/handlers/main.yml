@@ -1,0 +1,22 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart valkey
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_service_name }}"
+    state: restarted
+  when: valkey_server_enabled_resolved | default(valkey_server_enabled | bool)
+
+- name: Restart valkey sentinel
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_sentinel_service_name }}"
+    state: restarted
+  when: valkey_sentinel_enabled_resolved | default(valkey_sentinel_enabled | bool)
+
+- name: Restart haproxy
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_haproxy_service_name }}"
+    state: restarted
+  when: valkey_haproxy_enabled_resolved | default(valkey_haproxy_enabled | bool)

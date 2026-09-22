@@ -4,3 +4,7 @@
 
 Charts are deployed via Github Actions to the `gh-pages` branch. 
 
+
+### Ansible role
+
+An on-prem Ansible role for deploying a Valkey + Sentinel cluster with optional HAProxy is available under `ansible/roles/valkey_cluster`.

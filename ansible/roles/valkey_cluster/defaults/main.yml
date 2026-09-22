@@ -1,0 +1,76 @@
+---
+valkey_server_enabled: true
+valkey_haproxy_enabled: false
+
+valkey_cluster_group: valkey
+valkey_cluster_nodes: "{{ groups[valkey_cluster_group] | default([]) }}"
+valkey_haproxy_backend_nodes: "{{ valkey_cluster_nodes }}"
+valkey_primary_host: "{{ (valkey_cluster_nodes | first) | default('') }}"
+
+valkey_user: valkey
+valkey_group: valkey
+valkey_server_packages:
+  - valkey-server
+valkey_haproxy_packages:
+  - haproxy
+
+valkey_server_binary: /usr/bin/valkey-server
+valkey_service_name: valkey
+valkey_sentinel_service_name: valkey-sentinel
+valkey_haproxy_service_name: haproxy
+
+valkey_bind_address: 0.0.0.0
+valkey_advertise_address: "{{ ansible_host | default(inventory_hostname) }}"
+valkey_port: 6379
+valkey_master_name: mymaster
+valkey_protected_mode: false
+valkey_disable_commands:
+  - FLUSHDB
+  - FLUSHALL
+valkey_appendonly: false
+valkey_save:
+  - '900 1'
+valkey_min_replicas_to_write: 1
+valkey_min_replicas_max_lag: 5
+valkey_maxmemory: '0'
+valkey_maxmemory_policy: volatile-lru
+valkey_repl_diskless_sync: 'yes'
+valkey_rdbcompression: 'yes'
+valkey_rdbchecksum: 'yes'
+valkey_requirepass: ''
+valkey_extra_config: ''
+
+valkey_config_dir: /etc/valkey
+valkey_config_file: "{{ valkey_config_dir }}/valkey.conf"
+valkey_data_dir: /var/lib/valkey
+valkey_runtime_dir: /run/valkey
+valkey_nofile_limit: 65536
+
+valkey_sentinel_enabled: "{{ valkey_server_enabled }}"
+valkey_sentinel_port: 26379
+valkey_sentinel_bind_address: "{{ valkey_bind_address }}"
+valkey_sentinel_quorum: "{{ ((valkey_cluster_nodes | length) // 2) + 1 if (valkey_cluster_nodes | length) > 0 else 1 }}"
+valkey_sentinel_password: ''
+valkey_sentinel_resolve_hostnames: false
+valkey_sentinel_announce_hostnames: false
+valkey_sentinel_down_after_milliseconds: 10000
+valkey_sentinel_failover_timeout: 180000
+valkey_sentinel_parallel_syncs: 5
+valkey_sentinel_extra_config: ''
+valkey_sentinel_config_file: "{{ valkey_config_dir }}/sentinel.conf"
+valkey_sentinel_state_dir: /var/lib/valkey-sentinel
+
+valkey_haproxy_bind_address: 0.0.0.0
+valkey_haproxy_port: 6379
+valkey_haproxy_readonly_enabled: false
+valkey_haproxy_readonly_port: 6380
+valkey_haproxy_check_interval: 1s
+valkey_haproxy_check_fall: 1
+valkey_haproxy_master_discovery_threshold: "{{ valkey_sentinel_quorum }}"
+valkey_haproxy_connect_timeout: 4s
+valkey_haproxy_server_timeout: 330s
+valkey_haproxy_client_timeout: 330s
+valkey_haproxy_check_timeout: 2s
+valkey_haproxy_tunnel_timeout: 1h
+valkey_haproxy_sticky_balancing: false
+valkey_haproxy_extra_config: ''

@@ -1,0 +1,28 @@
+dir {{ valkey_sentinel_state_dir | quote }}
+port {{ valkey_sentinel_port }}
+bind {{ valkey_sentinel_bind_address }}
+daemonize no
+supervised systemd
+logfile ""
+pidfile {{ (valkey_runtime_dir ~ '/' ~ valkey_sentinel_service_name ~ '.pid') | quote }}
+sentinel monitor {{ valkey_master_name }} {{ valkey_primary_address_resolved }} {{ valkey_port }} {{ valkey_sentinel_quorum }}
+sentinel down-after-milliseconds {{ valkey_master_name }} {{ valkey_sentinel_down_after_milliseconds }}
+sentinel failover-timeout {{ valkey_master_name }} {{ valkey_sentinel_failover_timeout }}
+sentinel parallel-syncs {{ valkey_master_name }} {{ valkey_sentinel_parallel_syncs }}
+sentinel announce-ip {{ valkey_current_address_resolved }}
+sentinel announce-port {{ valkey_sentinel_port }}
+{% if valkey_requirepass | length > 0 %}
+sentinel auth-pass {{ valkey_master_name }} {{ valkey_requirepass }}
+{% endif %}
+{% if valkey_sentinel_password | length > 0 %}
+requirepass {{ valkey_sentinel_password }}
+{% endif %}
+{% if valkey_sentinel_resolve_hostnames %}
+sentinel resolve-hostnames yes
+{% endif %}
+{% if valkey_sentinel_announce_hostnames %}
+sentinel announce-hostnames yes
+{% endif %}
+{% if valkey_sentinel_extra_config | trim %}
+{{ valkey_sentinel_extra_config | trim }}
+{% endif %}
