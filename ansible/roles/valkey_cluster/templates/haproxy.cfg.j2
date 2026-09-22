@@ -16,27 +16,6 @@ listen health_check_http_url
   monitor-uri /healthz
   option dontlognull
 
-{% for node in valkey_haproxy_backend_nodes_resolved %}
-{% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
-backend check_if_valkey_is_master_{{ loop.index0 }}
-  mode tcp
-  option tcp-check
-  tcp-check connect
-{% if valkey_sentinel_password | length > 0 %}
-  tcp-check send "AUTH {{ valkey_sentinel_password }}"\r\n
-  tcp-check expect string +OK
-{% endif %}
-  tcp-check send PING\r\n
-  tcp-check expect string +PONG
-  tcp-check send SENTINEL\ get-master-addr-by-name\ {{ valkey_master_name }}\r\n
-  tcp-check expect string ${{ addr | length }}\r\n{{ addr }}\r\n${{ (valkey_port | string) | length }}\r\n{{ valkey_port }}
-  tcp-check send QUIT\r\n
-{% for backend in valkey_haproxy_backend_nodes_resolved %}
-{% set backend_addr = hostvars[backend].valkey_advertise_address | default(hostvars[backend].ansible_host) | default(backend) %}
-  server R{{ loop.index0 }} {{ backend_addr }}:{{ valkey_sentinel_port }} check inter {{ valkey_haproxy_check_interval }}
-{% endfor %}
-
-{% endfor %}
 frontend ft_valkey_master
   bind {{ valkey_haproxy_bind_address }}:{{ valkey_haproxy_port }}
   use_backend bk_valkey_master
@@ -67,7 +46,6 @@ backend bk_valkey_master
   tcp-check expect string +OK
 {% for node in valkey_haproxy_backend_nodes_resolved %}
 {% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
-  use-server R{{ loop.index0 }} if { srv_is_up(R{{ loop.index0 }}) } { nbsrv(check_if_valkey_is_master_{{ loop.index0 }}) ge {{ valkey_haproxy_master_discovery_threshold | int }} }
   server R{{ loop.index0 }} {{ addr }}:{{ valkey_port }} check inter {{ valkey_haproxy_check_interval }} fall {{ valkey_haproxy_check_fall }} rise 1
 {% endfor %}
 

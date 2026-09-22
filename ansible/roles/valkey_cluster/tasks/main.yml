@@ -136,19 +136,19 @@
     daemon_reload: true
   when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
 
-- name: Enable and start Sentinel
-  ansible.builtin.systemd_service:
-    name: "{{ valkey_sentinel_service_name }}"
-    enabled: true
-    state: started
-  when: valkey_sentinel_enabled_resolved
-
 - name: Enable and start Valkey
   ansible.builtin.systemd_service:
     name: "{{ valkey_service_name }}"
     enabled: true
     state: started
   when: valkey_server_enabled_resolved
+
+- name: Enable and start Sentinel
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_sentinel_service_name }}"
+    enabled: true
+    state: started
+  when: valkey_sentinel_enabled_resolved
 
 - name: Enable and start HAProxy
   ansible.builtin.systemd_service:

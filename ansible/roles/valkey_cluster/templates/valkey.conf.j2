@@ -10,8 +10,10 @@ dbfilename dump.rdb
 replica-announce-ip {{ valkey_current_address_resolved }}
 replica-announce-port {{ valkey_port }}
 appendonly {{ 'yes' if valkey_appendonly else 'no' }}
+{% if valkey_current_address_resolved == valkey_primary_address_resolved %}
 min-replicas-to-write {{ valkey_min_replicas_to_write }}
 min-replicas-max-lag {{ valkey_min_replicas_max_lag }}
+{% endif %}
 maxmemory {{ valkey_maxmemory }}
 maxmemory-policy {{ valkey_maxmemory_policy }}
 repl-diskless-sync {{ valkey_repl_diskless_sync }}
