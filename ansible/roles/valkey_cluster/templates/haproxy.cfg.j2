@@ -87,7 +87,7 @@ backend bk_valkey_replica
   tcp-check send PING\r\n
   tcp-check expect string +PONG
   tcp-check send info\ replication\r\n
-  tcp-check expect string role:slave
+  tcp-check expect rstring role:(slave|replica)
   tcp-check send QUIT\r\n
   tcp-check expect string +OK
 {% for node in valkey_haproxy_backend_nodes_resolved %}

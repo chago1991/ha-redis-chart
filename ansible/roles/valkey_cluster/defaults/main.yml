@@ -56,7 +56,7 @@ valkey_sentinel_resolve_hostnames: false
 valkey_sentinel_announce_hostnames: false
 valkey_sentinel_down_after_milliseconds: 10000
 valkey_sentinel_failover_timeout: 180000
-valkey_sentinel_parallel_syncs: 5
+valkey_sentinel_parallel_syncs: "{{ ([5, ((valkey_cluster_nodes | length) - 1)] | min) if (valkey_cluster_nodes | length) > 1 else 1 }}"
 valkey_sentinel_extra_config: ''
 valkey_sentinel_config_file: "{{ valkey_config_dir }}/sentinel.conf"
 valkey_sentinel_state_dir: /var/lib/valkey-sentinel

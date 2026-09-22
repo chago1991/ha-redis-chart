@@ -123,8 +123,10 @@
   notify: Restart haproxy
   when: valkey_haproxy_enabled_resolved
 
-- name: Flush handlers before service enablement
-  ansible.builtin.meta: flush_handlers
+- name: Reload systemd manager configuration
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
 
 - name: Enable and start Valkey
   ansible.builtin.systemd_service:
