@@ -35,7 +35,7 @@ backend bk_valkey_master
   option tcp-check
   tcp-check connect
 {% if valkey_requirepass | length > 0 %}
-  tcp-check send "*2\r\n$4\r\nAUTH\r\n${{ valkey_requirepass | length }}\r\n{{ valkey_requirepass }}\r\n"
+  tcp-check send "*2\r\n$4\r\nAUTH\r\n{{ '$' ~ (valkey_requirepass | length) }}\r\n{{ valkey_requirepass }}\r\n"
   tcp-check expect string +OK
 {% endif %}
   tcp-check send *1\r\n$4\r\nPING\r\n
@@ -59,7 +59,7 @@ backend bk_valkey_replica
   option tcp-check
   tcp-check connect
 {% if valkey_requirepass | length > 0 %}
-  tcp-check send "*2\r\n$4\r\nAUTH\r\n${{ valkey_requirepass | length }}\r\n{{ valkey_requirepass }}\r\n"
+  tcp-check send "*2\r\n$4\r\nAUTH\r\n{{ '$' ~ (valkey_requirepass | length) }}\r\n{{ valkey_requirepass }}\r\n"
   tcp-check expect string +OK
 {% endif %}
   tcp-check send *1\r\n$4\r\nPING\r\n

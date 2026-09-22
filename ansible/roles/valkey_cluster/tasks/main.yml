@@ -197,11 +197,18 @@
     state: "{{ 'restarted' if (valkey_server_config_result.changed | default(false) or valkey_server_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_server_enabled_resolved
 
-- name: Wait for Valkey to accept connections
-  ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if valkey_bind_address == '0.0.0.0' else ('::1' if valkey_bind_address == '::' else valkey_bind_address) }}"
-    port: "{{ valkey_port }}"
-    timeout: 30
+- name: Wait for Valkey listener to appear
+  ansible.builtin.command:
+    argv:
+      - ss
+      - -ltn
+      - "sport = :{{ valkey_port }}"
+  register: valkey_listener_check
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 1
+  until: "'LISTEN' in valkey_listener_check.stdout"
   when: valkey_server_enabled_resolved and valkey_sentinel_enabled_resolved
 
 - name: Enable and start Sentinel
