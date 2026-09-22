@@ -79,6 +79,7 @@ all:
 | `valkey_requirepass` | Password applied to Valkey and replica auth | `""` |
 | `valkey_auth_mode` | Supported authentication mode for this role | `none` or `shared_password` |
 | `valkey_sentinel_password` | Reserved for future peer-auth support; keep empty with the current role | `""` |
+| `valkey_min_replicas_to_write` | Write quorum threshold applied to every node after promotion | `0` |
 | `valkey_sentinel_binary` | Sentinel executable when it differs from the server binary | `valkey_server_binary` |
 | `valkey_sentinel_overwrite_config` | Re-template `sentinel.conf` even after Sentinel has persisted runtime state | `false` |
 | `valkey_haproxy_enabled` | Installs and configures HAProxy on the current host | `false` |
@@ -93,6 +94,7 @@ all:
 - The role assumes Valkey is available from the target host package repositories.
 - Override `valkey_server_packages`, `valkey_server_binary`, or the user/group variables if your distribution uses different names.
 - Sentinel rewrites its own config during failover, so the sentinel config file is owned by the Valkey service account and is preserved on later role runs unless `valkey_sentinel_overwrite_config` is set to `true`.
+- Sentinel is only supported on hosts that also run the Valkey server role.
 - The supported auth model is a simple shared password (`requirepass`/`masterauth`). ACL-style username-based auth is out of scope for this role.
 - Sentinel peer authentication is intentionally not enabled by this role yet; leave `valkey_sentinel_password` empty so Sentinel quorum traffic remains in the supported mode.
-- If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer.
+- If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer. Passwords used with HAProxy checks must not contain double quotes or newlines.

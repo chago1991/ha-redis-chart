@@ -2,7 +2,7 @@ dir "{{ valkey_data_dir }}"
 port {{ valkey_port }}
 bind {{ valkey_bind_address }}
 daemonize no
-supervised systemd
+supervised {{ valkey_supervision_mode }}
 protected-mode {{ 'yes' if valkey_protected_mode else 'no' }}
 logfile ""
 pidfile "{{ valkey_runtime_dir }}/{{ valkey_service_name }}.pid"

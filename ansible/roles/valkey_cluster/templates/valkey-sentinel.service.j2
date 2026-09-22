@@ -4,7 +4,7 @@ After=network-online.target {{ valkey_service_name }}.service
 Wants=network-online.target
 
 [Service]
-Type=notify
+Type=simple
 User={{ valkey_user }}
 Group={{ valkey_group }}
 ExecStart={{ valkey_sentinel_binary }} {{ valkey_sentinel_config_file }} --sentinel

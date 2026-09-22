@@ -26,8 +26,10 @@
       - valkey_primary_host_resolved | length > 0
       - valkey_primary_host_resolved in valkey_cluster_nodes_resolved
       - valkey_primary_address_resolved | length > 0
+      - not valkey_sentinel_enabled_resolved or valkey_server_enabled_resolved
       - valkey_auth_mode in ['none', 'shared_password']
       - valkey_sentinel_password | length == 0
+      - valkey_requirepass | length == 0 or (valkey_requirepass is match('^[^\"\\r\\n]+$'))
       - valkey_sentinel_quorum | int >= 1
       - (valkey_sentinel_quorum | int) <= (valkey_cluster_nodes_resolved | length)
     fail_msg: >-

@@ -2,7 +2,7 @@ dir "{{ valkey_sentinel_state_dir }}"
 port {{ valkey_sentinel_port }}
 bind {{ valkey_sentinel_bind_address }}
 daemonize no
-supervised systemd
+supervised {{ valkey_supervision_mode }}
 logfile ""
 pidfile "{{ valkey_runtime_dir }}/{{ valkey_sentinel_service_name }}.pid"
 sentinel monitor {{ valkey_master_name }} {{ valkey_primary_address_resolved }} {{ valkey_port }} {{ valkey_sentinel_quorum }}

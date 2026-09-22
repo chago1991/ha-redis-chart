@@ -24,6 +24,7 @@ valkey_bind_address: 0.0.0.0
 valkey_advertise_address: "{{ ansible_host | default(inventory_hostname) }}"
 valkey_port: 6379
 valkey_master_name: mymaster
+valkey_supervision_mode: "no"
 valkey_protected_mode: false
 valkey_disable_commands:
   - FLUSHDB
@@ -31,7 +32,7 @@ valkey_disable_commands:
 valkey_appendonly: false
 valkey_save:
   - '900 1'
-valkey_min_replicas_to_write: "{{ 1 if (valkey_cluster_nodes | length) > 1 else 0 }}"
+valkey_min_replicas_to_write: 0
 valkey_min_replicas_max_lag: 5
 valkey_maxmemory: '0'
 valkey_maxmemory_policy: volatile-lru
