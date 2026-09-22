@@ -37,10 +37,13 @@
   ansible.builtin.assert:
     that:
       - valkey_haproxy_backend_nodes_resolved | length > 0
+      - "'AUTH' not in (valkey_disable_commands | map('upper') | list) or valkey_requirepass | length == 0"
       - "'INFO' not in (valkey_disable_commands | map('upper') | list)"
+      - "'PING' not in (valkey_disable_commands | map('upper') | list)"
+      - "'QUIT' not in (valkey_disable_commands | map('upper') | list)"
       - valkey_requirepass | length == 0 or valkey_haproxy_allow_insecure_auth_transport | bool
     fail_msg: >-
-      Define HAProxy backends, keep INFO enabled, and explicitly allow insecure backend auth
+      Define HAProxy backends, keep AUTH/INFO/PING/QUIT enabled for health checks, and explicitly allow insecure backend auth
       transport before enabling HAProxy with password-protected Valkey nodes.
   when: valkey_haproxy_enabled_resolved
 
@@ -81,7 +84,7 @@
     owner: root
     group: "{{ valkey_group }}"
     mode: '0640'
-  notify: Restart valkey
+  register: valkey_server_config_result
   when: valkey_server_enabled_resolved
 
 - name: Check existing Sentinel configuration
@@ -97,7 +100,7 @@
     owner: "{{ valkey_user }}"
     group: "{{ valkey_group }}"
     mode: '0640'
-  notify: Restart valkey sentinel
+  register: valkey_sentinel_config_result
   when:
     - valkey_sentinel_enabled_resolved
     - valkey_sentinel_overwrite_config | bool or not valkey_sentinel_config_stat.stat.exists
@@ -109,8 +112,7 @@
     owner: root
     group: root
     mode: '0644'
-  notify:
-    - Restart valkey
+  register: valkey_server_unit_result
   when: valkey_server_enabled_resolved
 
 - name: Deploy Sentinel systemd unit
@@ -120,8 +122,7 @@
     owner: root
     group: root
     mode: '0644'
-  notify:
-    - Restart valkey sentinel
+  register: valkey_sentinel_unit_result
   when: valkey_sentinel_enabled_resolved
 
 - name: Deploy HAProxy configuration
@@ -131,7 +132,7 @@
     owner: root
     group: root
     mode: '0644'
-  notify: Restart haproxy
+  register: valkey_haproxy_config_result
   when: valkey_haproxy_enabled_resolved
 
 - name: Enable and start Valkey
@@ -139,7 +140,7 @@
     name: "{{ valkey_service_name }}"
     daemon_reload: true
     enabled: true
-    state: started
+    state: "{{ 'restarted' if (valkey_server_config_result.changed | default(false) or valkey_server_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_server_enabled_resolved
 
 - name: Enable and start Sentinel
@@ -147,12 +148,12 @@
     name: "{{ valkey_sentinel_service_name }}"
     daemon_reload: true
     enabled: true
-    state: started
+    state: "{{ 'restarted' if (valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_sentinel_enabled_resolved
 
 - name: Enable and start HAProxy
   ansible.builtin.systemd_service:
     name: "{{ valkey_haproxy_service_name }}"
     enabled: true
-    state: started
+    state: "{{ 'restarted' if (valkey_haproxy_config_result.changed | default(false)) else 'started' }}"
   when: valkey_haproxy_enabled_resolved

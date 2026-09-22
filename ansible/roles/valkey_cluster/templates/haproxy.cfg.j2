@@ -35,14 +35,14 @@ backend bk_valkey_master
   option tcp-check
   tcp-check connect
 {% if valkey_requirepass | length > 0 %}
-  tcp-check send "AUTH {{ valkey_requirepass }}"\r\n
+  tcp-check send *2\r\n$4\r\nAUTH\r\n${{ valkey_requirepass | length }}\r\n{{ valkey_requirepass }}\r\n
   tcp-check expect string +OK
 {% endif %}
-  tcp-check send PING\r\n
+  tcp-check send *1\r\n$4\r\nPING\r\n
   tcp-check expect string +PONG
-  tcp-check send INFO\ REPLICATION\r\n
+  tcp-check send *2\r\n$4\r\nINFO\r\n$11\r\nREPLICATION\r\n
   tcp-check expect string role:master
-  tcp-check send QUIT\r\n
+  tcp-check send *1\r\n$4\r\nQUIT\r\n
   tcp-check expect string +OK
 {% for node in valkey_haproxy_backend_nodes_resolved %}
 {% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
@@ -59,14 +59,14 @@ backend bk_valkey_replica
   option tcp-check
   tcp-check connect
 {% if valkey_requirepass | length > 0 %}
-  tcp-check send "AUTH {{ valkey_requirepass }}"\r\n
+  tcp-check send *2\r\n$4\r\nAUTH\r\n${{ valkey_requirepass | length }}\r\n{{ valkey_requirepass }}\r\n
   tcp-check expect string +OK
 {% endif %}
-  tcp-check send PING\r\n
+  tcp-check send *1\r\n$4\r\nPING\r\n
   tcp-check expect string +PONG
-  tcp-check send INFO\ REPLICATION\r\n
+  tcp-check send *2\r\n$4\r\nINFO\r\n$11\r\nREPLICATION\r\n
   tcp-check expect rstring role:(slave|replica)
-  tcp-check send QUIT\r\n
+  tcp-check send *1\r\n$4\r\nQUIT\r\n
   tcp-check expect string +OK
 {% for node in valkey_haproxy_backend_nodes_resolved %}
 {% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
