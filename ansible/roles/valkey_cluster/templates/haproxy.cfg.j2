@@ -40,7 +40,7 @@ backend bk_valkey_master
 {% endif %}
   tcp-check send PING\r\n
   tcp-check expect string +PONG
-  tcp-check send info\ replication\r\n
+  tcp-check send INFO\ REPLICATION\r\n
   tcp-check expect string role:master
   tcp-check send QUIT\r\n
   tcp-check expect string +OK
@@ -64,7 +64,7 @@ backend bk_valkey_replica
 {% endif %}
   tcp-check send PING\r\n
   tcp-check expect string +PONG
-  tcp-check send info\ replication\r\n
+  tcp-check send INFO\ REPLICATION\r\n
   tcp-check expect rstring role:(slave|replica)
   tcp-check send QUIT\r\n
   tcp-check expect string +OK

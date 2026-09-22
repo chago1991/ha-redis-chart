@@ -1,8 +1,4 @@
 ---
-- name: Reload systemd
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-
 - name: Restart valkey
   ansible.builtin.systemd_service:
     name: "{{ valkey_service_name }}"

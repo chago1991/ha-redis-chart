@@ -105,7 +105,6 @@
     group: root
     mode: '0644'
   notify:
-    - Reload systemd
     - Restart valkey
   when: valkey_server_enabled_resolved
 
@@ -117,7 +116,6 @@
     group: root
     mode: '0644'
   notify:
-    - Reload systemd
     - Restart valkey sentinel
   when: valkey_sentinel_enabled_resolved
 
@@ -131,14 +129,10 @@
   notify: Restart haproxy
   when: valkey_haproxy_enabled_resolved
 
-- name: Reload systemd manager configuration
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-  when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
-
 - name: Enable and start Valkey
   ansible.builtin.systemd_service:
     name: "{{ valkey_service_name }}"
+    daemon_reload: true
     enabled: true
     state: started
   when: valkey_server_enabled_resolved
@@ -146,6 +140,7 @@
 - name: Enable and start Sentinel
   ansible.builtin.systemd_service:
     name: "{{ valkey_sentinel_service_name }}"
+    daemon_reload: true
     enabled: true
     state: started
   when: valkey_sentinel_enabled_resolved
