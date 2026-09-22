@@ -1,13 +1,13 @@
 [Unit]
 Description=Valkey Sentinel
-After=network-online.target {{ valkey_service_name }}.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=notify
 User={{ valkey_user }}
 Group={{ valkey_group }}
-ExecStart={{ valkey_server_binary }} {{ valkey_sentinel_config_file }} --sentinel --supervised systemd
+ExecStart={{ valkey_sentinel_binary }} {{ valkey_sentinel_config_file }} --sentinel --supervised systemd
 ExecStop=/bin/kill -s TERM $MAINPID
 RuntimeDirectory={{ valkey_runtime_dir_name }}
 RuntimeDirectoryMode=0755

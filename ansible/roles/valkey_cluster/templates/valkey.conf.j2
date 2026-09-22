@@ -27,7 +27,7 @@ save {{ save_rule }}
 requirepass {{ valkey_requirepass }}
 masterauth {{ valkey_requirepass }}
 {% endif %}
-{% if inventory_hostname != valkey_primary_host_resolved %}
+{% if valkey_current_address_resolved != valkey_primary_address_resolved %}
 replicaof {{ valkey_primary_address_resolved }} {{ valkey_port }}
 {% endif %}
 {% if valkey_extra_config | trim %}

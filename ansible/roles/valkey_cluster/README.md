@@ -78,6 +78,8 @@ all:
 | `valkey_primary_host` | Bootstrap primary used for the initial replica configuration | first cluster host |
 | `valkey_requirepass` | Password applied to Valkey and replica auth | `""` |
 | `valkey_sentinel_password` | Password required by Sentinel | `""` |
+| `valkey_sentinel_binary` | Sentinel executable when it differs from the server binary | `valkey_server_binary` |
+| `valkey_sentinel_overwrite_config` | Re-template `sentinel.conf` even after Sentinel has persisted runtime state | `false` |
 | `valkey_haproxy_enabled` | Installs and configures HAProxy on the current host | `false` |
 | `valkey_haproxy_readonly_enabled` | Exposes a second HAProxy port for replicas | `false` |
 | `valkey_haproxy_backend_nodes` | Backend nodes used by HAProxy | `valkey_cluster_nodes` |
@@ -87,4 +89,4 @@ all:
 
 - The role assumes Valkey is available from the target host package repositories.
 - Override `valkey_server_packages`, `valkey_server_binary`, or the user/group variables if your distribution uses different names.
-- Sentinel rewrites its own config during failover, so the sentinel config file is owned by the Valkey service account.
+- Sentinel rewrites its own config during failover, so the sentinel config file is owned by the Valkey service account and is preserved on later role runs unless `valkey_sentinel_overwrite_config` is set to `true`.

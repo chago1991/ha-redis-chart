@@ -29,7 +29,7 @@ backend check_if_valkey_is_master_{{ loop.index0 }}
   tcp-check send PING\r\n
   tcp-check expect string +PONG
   tcp-check send SENTINEL\ get-master-addr-by-name\ {{ valkey_master_name }}\r\n
-  tcp-check expect string {{ addr }}
+  tcp-check expect string ${{ addr | length }}\r\n{{ addr }}\r\n${{ (valkey_port | string) | length }}\r\n{{ valkey_port }}
   tcp-check send QUIT\r\n
 {% for backend in valkey_haproxy_backend_nodes_resolved %}
 {% set backend_addr = hostvars[backend].valkey_advertise_address | default(hostvars[backend].ansible_host) | default(backend) %}
