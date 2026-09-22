@@ -1,0 +1,79 @@
+global
+  log /dev/log local0
+  maxconn 2000
+
+defaults VALKEY
+  mode tcp
+  timeout connect {{ valkey_haproxy_connect_timeout }}
+  timeout server {{ valkey_haproxy_server_timeout }}
+  timeout client {{ valkey_haproxy_client_timeout }}
+  timeout check {{ valkey_haproxy_check_timeout }}
+  timeout tunnel {{ valkey_haproxy_tunnel_timeout }}
+
+listen health_check_http_url
+  bind {{ valkey_haproxy_bind_address }}:8888
+  mode http
+  monitor-uri /healthz
+  option dontlognull
+
+frontend ft_valkey_master
+  bind {{ valkey_haproxy_bind_address }}:{{ valkey_haproxy_port }}
+  use_backend bk_valkey_master
+
+{% if valkey_haproxy_readonly_enabled %}
+frontend ft_valkey_replica
+  bind {{ valkey_haproxy_bind_address }}:{{ valkey_haproxy_readonly_port }}
+  use_backend bk_valkey_replica
+
+{% endif %}
+backend bk_valkey_master
+{% if valkey_haproxy_sticky_balancing %}
+  balance source
+  hash-type consistent
+{% endif %}
+  mode tcp
+  option tcp-check
+  tcp-check connect
+{% if valkey_requirepass | length > 0 %}
+  tcp-check send "*2\r\n$4\r\nAUTH\r\n{{ '$' ~ (valkey_requirepass | length) }}\r\n{{ valkey_requirepass }}\r\n"
+  tcp-check expect string +OK
+{% endif %}
+  tcp-check send *1\r\n$4\r\nPING\r\n
+  tcp-check expect string +PONG
+  tcp-check send *2\r\n$4\r\nINFO\r\n$11\r\nREPLICATION\r\n
+  tcp-check expect string role:master
+  tcp-check send *1\r\n$4\r\nQUIT\r\n
+  tcp-check expect string +OK
+{% for node in valkey_haproxy_backend_nodes_resolved %}
+{% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
+  server R{{ loop.index0 }} {{ addr }}:{{ valkey_port }} check inter {{ valkey_haproxy_check_interval }} fall {{ valkey_haproxy_check_fall }} rise 1
+{% endfor %}
+
+{% if valkey_haproxy_readonly_enabled %}
+backend bk_valkey_replica
+{% if valkey_haproxy_sticky_balancing %}
+  balance source
+  hash-type consistent
+{% endif %}
+  mode tcp
+  option tcp-check
+  tcp-check connect
+{% if valkey_requirepass | length > 0 %}
+  tcp-check send "*2\r\n$4\r\nAUTH\r\n{{ '$' ~ (valkey_requirepass | length) }}\r\n{{ valkey_requirepass }}\r\n"
+  tcp-check expect string +OK
+{% endif %}
+  tcp-check send *1\r\n$4\r\nPING\r\n
+  tcp-check expect string +PONG
+  tcp-check send *2\r\n$4\r\nINFO\r\n$11\r\nREPLICATION\r\n
+  tcp-check expect rstring role:(slave|replica)
+  tcp-check send *1\r\n$4\r\nQUIT\r\n
+  tcp-check expect string +OK
+{% for node in valkey_haproxy_backend_nodes_resolved %}
+{% set addr = hostvars[node].valkey_advertise_address | default(hostvars[node].ansible_host) | default(node) %}
+  server R{{ loop.index0 }} {{ addr }}:{{ valkey_port }} check inter {{ valkey_haproxy_check_interval }} fall {{ valkey_haproxy_check_fall }} rise 1
+{% endfor %}
+
+{% endif %}
+{% if valkey_haproxy_extra_config | trim %}
+{{ valkey_haproxy_extra_config | trim }}
+{% endif %}

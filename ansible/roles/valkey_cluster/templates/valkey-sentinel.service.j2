@@ -1,0 +1,19 @@
+[Unit]
+Description=Valkey Sentinel
+After=network-online.target {{ valkey_service_name }}.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ valkey_user }}
+Group={{ valkey_group }}
+ExecStart={{ valkey_sentinel_binary }} {{ valkey_sentinel_config_file }} --sentinel
+ExecStop=/bin/kill -s TERM $MAINPID
+RuntimeDirectory={{ valkey_runtime_dir_name }}
+RuntimeDirectoryMode=0755
+LimitNOFILE={{ valkey_nofile_limit }}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

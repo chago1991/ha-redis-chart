@@ -1,0 +1,228 @@
+---
+- name: Resolve cluster topology
+  ansible.builtin.set_fact:
+    valkey_server_enabled_resolved: "{{ valkey_server_enabled | bool }}"
+    valkey_sentinel_enabled_resolved: "{{ valkey_sentinel_enabled | bool }}"
+    valkey_haproxy_enabled_resolved: "{{ valkey_haproxy_enabled | bool }}"
+    valkey_cluster_nodes_resolved: "{{ valkey_cluster_nodes | list }}"
+    valkey_haproxy_backend_nodes_resolved: "{{ valkey_haproxy_backend_nodes | list }}"
+    valkey_primary_host_resolved: "{{ valkey_primary_host }}"
+    valkey_primary_address_resolved: >-
+      {{
+        (
+          hostvars.get(valkey_primary_host, {}).valkey_advertise_address
+          | default(hostvars.get(valkey_primary_host, {}).ansible_host)
+          | default(valkey_primary_host)
+        )
+        if (valkey_primary_host | length > 0)
+        else ''
+      }}
+    valkey_current_address_resolved: "{{ valkey_advertise_address }}"
+
+- name: Validate Valkey topology
+  ansible.builtin.assert:
+    that:
+      - valkey_cluster_nodes_resolved | length > 0
+      - valkey_primary_host_resolved | length > 0
+      - valkey_primary_host_resolved in valkey_cluster_nodes_resolved
+      - valkey_primary_address_resolved | length > 0
+      - not valkey_sentinel_enabled_resolved or valkey_server_enabled_resolved
+      - valkey_auth_mode in ['none', 'shared_password']
+      - valkey_sentinel_password | default('') | length == 0
+      - valkey_requirepass | length == 0 or (valkey_requirepass is match('^[^\"\\r\\n]+$'))
+      - valkey_sentinel_quorum | int >= 1
+      - (valkey_sentinel_quorum | int) <= (valkey_cluster_nodes_resolved | length)
+    fail_msg: >-
+      Define valid cluster hosts, use the supported auth mode (`none` or `shared_password`),
+      and leave Sentinel peer auth disabled before enabling Valkey or Sentinel deployment.
+  when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
+
+- name: Validate HAProxy backends
+  ansible.builtin.assert:
+    that:
+      - valkey_haproxy_backend_nodes_resolved | length > 0
+      - "'AUTH' not in (valkey_disable_commands | map('upper') | list) or valkey_requirepass | length == 0"
+      - "'INFO' not in (valkey_disable_commands | map('upper') | list)"
+      - "'PING' not in (valkey_disable_commands | map('upper') | list)"
+      - "'QUIT' not in (valkey_disable_commands | map('upper') | list)"
+      - valkey_requirepass | length == 0 or valkey_haproxy_allow_insecure_auth_transport | bool
+    fail_msg: >-
+      Define HAProxy backends, keep AUTH/INFO/PING/QUIT enabled for health checks, and explicitly allow insecure backend auth
+      transport before enabling HAProxy with password-protected Valkey nodes.
+  when: valkey_haproxy_enabled_resolved
+
+- name: Install Valkey packages
+  ansible.builtin.package:
+    name: "{{ valkey_server_packages }}"
+    state: present
+  when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
+
+- name: Install HAProxy packages
+  ansible.builtin.package:
+    name: "{{ valkey_haproxy_packages }}"
+    state: present
+  when: valkey_haproxy_enabled_resolved
+
+- name: Create Valkey directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(valkey_user) }}"
+    group: "{{ item.group | default(valkey_group) }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ valkey_config_dir }}"
+      owner: root
+      group: root
+      mode: '0755'
+    - path: "{{ valkey_data_dir }}"
+      mode: '0750'
+    - path: "{{ valkey_sentinel_state_dir }}"
+      mode: '0750'
+  when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
+
+- name: Deploy Valkey server configuration
+  ansible.builtin.template:
+    src: valkey.conf.j2
+    dest: "{{ valkey_config_file }}"
+    owner: root
+    group: "{{ valkey_group }}"
+    mode: '0640'
+  register: valkey_server_config_result
+  when: valkey_server_enabled_resolved
+
+- name: Ensure Sentinel configuration file exists
+  ansible.builtin.file:
+    path: "{{ valkey_sentinel_config_file }}"
+    state: touch
+    owner: "{{ valkey_user }}"
+    group: "{{ valkey_group }}"
+    mode: '0640'
+  when: valkey_sentinel_enabled_resolved
+
+- name: Manage Sentinel configuration directives
+  ansible.builtin.lineinfile:
+    path: "{{ valkey_sentinel_config_file }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: "{{ item.state | default('present') }}"
+    create: true
+  register: valkey_sentinel_config_result
+  loop:
+    - regexp: '^dir '
+      line: 'dir "{{ valkey_sentinel_state_dir }}"'
+    - regexp: '^port '
+      line: 'port {{ valkey_sentinel_port }}'
+    - regexp: '^bind '
+      line: 'bind {{ valkey_sentinel_bind_address }}'
+    - regexp: '^daemonize '
+      line: 'daemonize no'
+    - regexp: '^supervised '
+      line: 'supervised {{ valkey_supervision_mode }}'
+    - regexp: '^logfile '
+      line: 'logfile ""'
+    - regexp: '^pidfile '
+      line: 'pidfile "{{ valkey_runtime_dir }}/{{ valkey_sentinel_service_name }}.pid"'
+    - regexp: '^sentinel monitor '
+      line: 'sentinel monitor {{ valkey_master_name }} {{ valkey_primary_address_resolved }} {{ valkey_port }} {{ valkey_sentinel_quorum }}'
+    - regexp: '^sentinel down-after-milliseconds '
+      line: 'sentinel down-after-milliseconds {{ valkey_master_name }} {{ valkey_sentinel_down_after_milliseconds }}'
+    - regexp: '^sentinel failover-timeout '
+      line: 'sentinel failover-timeout {{ valkey_master_name }} {{ valkey_sentinel_failover_timeout }}'
+    - regexp: '^sentinel parallel-syncs '
+      line: 'sentinel parallel-syncs {{ valkey_master_name }} {{ valkey_sentinel_parallel_syncs }}'
+    - regexp: '^sentinel announce-ip '
+      line: 'sentinel announce-ip {{ valkey_current_address_resolved }}'
+    - regexp: '^sentinel announce-port '
+      line: 'sentinel announce-port {{ valkey_sentinel_port }}'
+    - regexp: '^sentinel auth-pass '
+      line: 'sentinel auth-pass {{ valkey_master_name }} {{ valkey_requirepass }}'
+      state: "{{ 'present' if valkey_requirepass | length > 0 else 'absent' }}"
+    - regexp: '^sentinel resolve-hostnames '
+      line: 'sentinel resolve-hostnames yes'
+      state: "{{ 'present' if valkey_sentinel_resolve_hostnames else 'absent' }}"
+    - regexp: '^sentinel announce-hostnames '
+      line: 'sentinel announce-hostnames yes'
+      state: "{{ 'present' if valkey_sentinel_announce_hostnames else 'absent' }}"
+  when: valkey_sentinel_enabled_resolved
+
+- name: Manage Sentinel extra configuration block
+  ansible.builtin.blockinfile:
+    path: "{{ valkey_sentinel_config_file }}"
+    marker: "# {mark} ANSIBLE MANAGED SENTINEL EXTRA CONFIG"
+    block: "{{ valkey_sentinel_extra_config | trim }}"
+    state: "{{ 'present' if valkey_sentinel_extra_config | trim else 'absent' }}"
+    create: true
+    owner: "{{ valkey_user }}"
+    group: "{{ valkey_group }}"
+    mode: '0640'
+  register: valkey_sentinel_extra_config_result
+  when: valkey_sentinel_enabled_resolved
+
+- name: Deploy Valkey systemd unit
+  ansible.builtin.template:
+    src: valkey.service.j2
+    dest: "/etc/systemd/system/{{ valkey_service_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  register: valkey_server_unit_result
+  when: valkey_server_enabled_resolved
+
+- name: Deploy Sentinel systemd unit
+  ansible.builtin.template:
+    src: valkey-sentinel.service.j2
+    dest: "/etc/systemd/system/{{ valkey_sentinel_service_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  register: valkey_sentinel_unit_result
+  when: valkey_sentinel_enabled_resolved
+
+- name: Deploy HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: "{{ valkey_haproxy_config_group }}"
+    mode: '0640'
+  register: valkey_haproxy_config_result
+  when: valkey_haproxy_enabled_resolved
+
+- name: Enable and start Valkey
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_service_name }}"
+    daemon_reload: true
+    enabled: true
+    state: "{{ 'restarted' if (valkey_server_config_result.changed | default(false) or valkey_server_unit_result.changed | default(false)) else 'started' }}"
+  when: valkey_server_enabled_resolved
+
+- name: Wait for Valkey listener to appear
+  ansible.builtin.command:
+    argv:
+      - ss
+      - -ltn
+      - "sport = :{{ valkey_port }}"
+  register: valkey_listener_check
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 1
+  until: "'LISTEN' in valkey_listener_check.stdout"
+  when: valkey_server_enabled_resolved and valkey_sentinel_enabled_resolved
+
+- name: Enable and start Sentinel
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_sentinel_service_name }}"
+    daemon_reload: true
+    enabled: true
+    state: "{{ 'restarted' if (valkey_sentinel_config_result.changed | default(false) or valkey_sentinel_extra_config_result.changed | default(false) or valkey_sentinel_unit_result.changed | default(false)) else 'started' }}"
+  when: valkey_sentinel_enabled_resolved
+
+- name: Enable and start HAProxy
+  ansible.builtin.systemd_service:
+    name: "{{ valkey_haproxy_service_name }}"
+    daemon_reload: true
+    enabled: true
+    state: "{{ 'restarted' if (valkey_haproxy_config_result.changed | default(false)) else 'started' }}"
+  when: valkey_haproxy_enabled_resolved
