@@ -14,9 +14,6 @@ sentinel announce-port {{ valkey_sentinel_port }}
 {% if valkey_requirepass | length > 0 %}
 sentinel auth-pass {{ valkey_master_name }} {{ valkey_requirepass }}
 {% endif %}
-{% if valkey_sentinel_password | length > 0 %}
-requirepass {{ valkey_sentinel_password }}
-{% endif %}
 {% if valkey_sentinel_resolve_hostnames %}
 sentinel resolve-hostnames yes
 {% endif %}
