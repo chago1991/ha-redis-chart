@@ -25,11 +25,12 @@
       - valkey_cluster_nodes_resolved | length > 0
       - valkey_primary_host_resolved | length > 0
       - valkey_primary_address_resolved | length > 0
+      - valkey_auth_mode in ['none', 'shared_password']
       - valkey_sentinel_quorum | int >= 1
       - (valkey_sentinel_quorum | int) <= (valkey_cluster_nodes_resolved | length)
     fail_msg: >-
-      Define valkey_cluster_nodes and valkey_primary_host with valid inventory hosts before enabling
-      Valkey or Sentinel deployment.
+      Define valid cluster hosts and use the supported auth mode (`none` or `shared_password`)
+      before enabling Valkey or Sentinel deployment.
   when: valkey_server_enabled_resolved or valkey_sentinel_enabled_resolved
 
 - name: Validate HAProxy backends
@@ -37,7 +38,10 @@
     that:
       - valkey_haproxy_backend_nodes_resolved | length > 0
       - "'INFO' not in (valkey_disable_commands | map('upper') | list)"
-    fail_msg: Define HAProxy backends and keep INFO enabled when HAProxy is enabled.
+      - valkey_requirepass | length == 0 or valkey_haproxy_allow_insecure_auth_transport | bool
+    fail_msg: >-
+      Define HAProxy backends, keep INFO enabled, and explicitly allow insecure backend auth
+      transport before enabling HAProxy with password-protected Valkey nodes.
   when: valkey_haproxy_enabled_resolved
 
 - name: Install Valkey packages
@@ -150,5 +154,5 @@
   ansible.builtin.systemd_service:
     name: "{{ valkey_haproxy_service_name }}"
     enabled: true
-    state: restarted
+    state: started
   when: valkey_haproxy_enabled_resolved

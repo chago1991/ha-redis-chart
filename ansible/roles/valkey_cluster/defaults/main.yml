@@ -39,6 +39,7 @@ valkey_repl_diskless_sync: 'yes'
 valkey_rdbcompression: 'yes'
 valkey_rdbchecksum: 'yes'
 valkey_requirepass: ''
+valkey_auth_mode: "{{ 'shared_password' if (valkey_requirepass | length > 0) else 'none' }}"
 valkey_extra_config: ''
 
 valkey_config_dir: /etc/valkey
@@ -67,6 +68,7 @@ valkey_haproxy_bind_address: 0.0.0.0
 valkey_haproxy_port: 6379
 valkey_haproxy_readonly_enabled: false
 valkey_haproxy_readonly_port: 6380
+valkey_haproxy_allow_insecure_auth_transport: false
 valkey_haproxy_check_interval: 1s
 valkey_haproxy_check_fall: 1
 valkey_haproxy_connect_timeout: 4s

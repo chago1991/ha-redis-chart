@@ -77,10 +77,12 @@ all:
 | `valkey_cluster_nodes` | Inventory hosts that run Valkey and Sentinel | `groups['valkey']` |
 | `valkey_primary_host` | Bootstrap primary used for the initial replica configuration | first cluster host |
 | `valkey_requirepass` | Password applied to Valkey and replica auth | `""` |
+| `valkey_auth_mode` | Supported authentication mode for this role | `none` or `shared_password` |
 | `valkey_sentinel_password` | Password required by Sentinel | `""` |
 | `valkey_sentinel_binary` | Sentinel executable when it differs from the server binary | `valkey_server_binary` |
 | `valkey_sentinel_overwrite_config` | Re-template `sentinel.conf` even after Sentinel has persisted runtime state | `false` |
 | `valkey_haproxy_enabled` | Installs and configures HAProxy on the current host | `false` |
+| `valkey_haproxy_allow_insecure_auth_transport` | Explicitly allow HAProxy backend checks to use password auth without TLS | `false` |
 | `valkey_haproxy_readonly_enabled` | Exposes a second HAProxy port for replicas | `false` |
 | `valkey_haproxy_backend_nodes` | Backend nodes used by HAProxy | `valkey_cluster_nodes` |
 | `valkey_disable_commands` | Commands disabled with `rename-command`; keep `INFO` enabled when using HAProxy health checks | `[FLUSHDB, FLUSHALL]` |
@@ -91,3 +93,5 @@ all:
 - The role assumes Valkey is available from the target host package repositories.
 - Override `valkey_server_packages`, `valkey_server_binary`, or the user/group variables if your distribution uses different names.
 - Sentinel rewrites its own config during failover, so the sentinel config file is owned by the Valkey service account and is preserved on later role runs unless `valkey_sentinel_overwrite_config` is set to `true`.
+- The supported auth model is a simple shared password (`requirepass`/`masterauth`). ACL-style username-based auth is out of scope for this role.
+- If you enable HAProxy together with `valkey_requirepass`, the role requires `valkey_haproxy_allow_insecure_auth_transport: true` because HAProxy backend health checks use cleartext TCP unless you add your own secured transport layer.
