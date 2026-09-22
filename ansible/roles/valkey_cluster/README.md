@@ -83,6 +83,7 @@ all:
 | `valkey_haproxy_enabled` | Installs and configures HAProxy on the current host | `false` |
 | `valkey_haproxy_readonly_enabled` | Exposes a second HAProxy port for replicas | `false` |
 | `valkey_haproxy_backend_nodes` | Backend nodes used by HAProxy | `valkey_cluster_nodes` |
+| `valkey_disable_commands` | Commands disabled with `rename-command`; keep `INFO` enabled when using HAProxy health checks | `[FLUSHDB, FLUSHALL]` |
 | `valkey_server_packages` | Override package names when your distro differs | `[valkey-server]` |
 
 ## Notes
