@@ -44,6 +44,7 @@ valkey_config_dir: /etc/valkey
 valkey_config_file: "{{ valkey_config_dir }}/valkey.conf"
 valkey_data_dir: /var/lib/valkey
 valkey_runtime_dir: /run/valkey
+valkey_runtime_dir_name: valkey
 valkey_nofile_limit: 65536
 
 valkey_sentinel_enabled: "{{ valkey_server_enabled }}"

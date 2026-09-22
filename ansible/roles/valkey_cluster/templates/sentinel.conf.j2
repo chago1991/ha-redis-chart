@@ -1,10 +1,10 @@
-dir {{ valkey_sentinel_state_dir | quote }}
+dir "{{ valkey_sentinel_state_dir }}"
 port {{ valkey_sentinel_port }}
 bind {{ valkey_sentinel_bind_address }}
 daemonize no
 supervised systemd
 logfile ""
-pidfile {{ (valkey_runtime_dir ~ '/' ~ valkey_sentinel_service_name ~ '.pid') | quote }}
+pidfile "{{ valkey_runtime_dir }}/{{ valkey_sentinel_service_name }}.pid"
 sentinel monitor {{ valkey_master_name }} {{ valkey_primary_address_resolved }} {{ valkey_port }} {{ valkey_sentinel_quorum }}
 sentinel down-after-milliseconds {{ valkey_master_name }} {{ valkey_sentinel_down_after_milliseconds }}
 sentinel failover-timeout {{ valkey_master_name }} {{ valkey_sentinel_failover_timeout }}
