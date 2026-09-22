@@ -24,6 +24,7 @@
     that:
       - valkey_cluster_nodes_resolved | length > 0
       - valkey_primary_host_resolved | length > 0
+      - valkey_primary_host_resolved in valkey_cluster_nodes_resolved
       - valkey_primary_address_resolved | length > 0
       - valkey_auth_mode in ['none', 'shared_password']
       - valkey_sentinel_password | length == 0
@@ -143,6 +144,13 @@
     enabled: true
     state: "{{ 'restarted' if (valkey_server_config_result.changed | default(false) or valkey_server_unit_result.changed | default(false)) else 'started' }}"
   when: valkey_server_enabled_resolved
+
+- name: Wait for Valkey to accept connections
+  ansible.builtin.wait_for:
+    host: "{{ valkey_current_address_resolved }}"
+    port: "{{ valkey_port }}"
+    timeout: 30
+  when: valkey_server_enabled_resolved and valkey_sentinel_enabled_resolved
 
 - name: Enable and start Sentinel
   ansible.builtin.systemd_service:
